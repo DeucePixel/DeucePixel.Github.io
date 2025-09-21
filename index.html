@@ -1,0 +1,377 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Photos</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Content Security Policy (allow inline script for this local page) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+
+  <!-- Trajan-like font -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --page-gap: 40px;
+      --h1-size: 80px;
+      --h2-size: 65px;
+      --p-size: 45px;
+      --p2-size: 25px;
+      --p3-size: 30px;
+
+      --img-height: 720px;
+      --separator-height: 38px;
+      --overlay-bg: rgba(0,0,0,0.85);
+    }
+
+    body {
+      position: relative;
+      font-family: "Cinzel", "Segoe UI", Arial, sans-serif;
+      margin: var(--page-gap);
+      color: #000;
+      background: #fff;
+    }
+
+    .h2-box {
+      margin-left: calc(-1 * var(--page-gap));
+      width: calc(100% + 2 * var(--page-gap));
+      padding: 125px var(--page-gap);
+      background: linear-gradient(90deg, #ef5d38 0%, #eaa16a 100%);
+      color: #fff;
+      border-radius: 0;
+    }
+
+    h1 { margin: 0 0 8px 0; font-size: var(--h1-size); line-height: 1.05; font-weight: 700; }
+    h2 { margin: 0; font-size: var(--h2-size); line-height: 1.1; font-weight: 700; }
+
+    p { font-size: var(--p-size); line-height: 1.45; margin: 0 0 12px 0; }
+    .p2 { font-size: var(--p2-size); margin-top: 12px; }
+
+    /* profile picture: higher and 2.5x larger than h1 */
+    .pfp {
+      position: absolute;
+      top: calc(var(--page-gap) * 0.05); /* raise above the orange area */
+      right: calc(var(--page-gap));
+      width: calc(var(--h1-size) * 2.5);  /* 2.5x larger */
+      height: calc(var(--h1-size) * 2.5);
+      border-radius: 50%;
+      object-fit: cover;
+      z-index: 9999;
+      box-shadow: 0 8px 26px rgba(0,0,0,0.28);
+      background: #ddd;
+      border: 3px solid rgba(0,0,0,0.06);
+      transform: translateY(-6%); /* small nudge up so it clears the orange box */
+    }
+
+    @media (max-width: 1000px) {
+      .pfp { width: calc(var(--h1-size) * 1.8); height: calc(var(--h1-size) * 1.8); }
+    }
+    @media (max-width: 700px) {
+      .pfp { width: calc(var(--h1-size) * 1.1); height: calc(var(--h1-size) * 1.1); top: calc(var(--page-gap) * 0.15); right: 12px; transform:none; }
+    }
+
+    .photo-row { display: flex; align-items: center; gap: 32px; margin: 28px 0; justify-content: flex-start; padding: 12px 0; }
+    .photo-row.reverse { flex-direction: row-reverse; }
+    .photo-row.column { flex-direction: column; align-items: flex-start; gap: 12px; }
+
+    .photo-row img {
+      height: var(--img-height);
+      width: auto;
+      max-width: 85%;
+      object-fit: cover;
+      border-radius: 6px;
+      border: none;
+      display: block;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      background: #eee;
+      cursor: zoom-in;
+      transition: transform .18s ease;
+    }
+    .photo-row img.loading { filter: blur(6px) grayscale(.3); opacity: .7; }
+    .photo-row img:active { transform: scale(.995); }
+
+    .photo-row .text { max-width: 60%; color: #000; padding: 0; background: transparent; border: none; box-shadow: none; }
+
+    .row-separator { height: var(--separator-height); background: #000; margin: 0; margin-left: calc(-1 * var(--page-gap)); width: calc(100% + 2 * var(--page-gap)); }
+
+    /* lightbox / modal */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--overlay-bg);
+      z-index: 2000;
+      padding: 20px;
+    }
+    .lightbox.show { display: flex; }
+    .lightbox img {
+      max-width: 96%;
+      max-height: 92%;
+      border-radius: 6px;
+      object-fit: contain;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .lightbox .meta {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #fff;
+      font-size: 14px;
+      opacity: .9;
+    }
+    .lightbox .close {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      color: #fff;
+      background: transparent;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+    }
+    .lightbox .nav {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    .lightbox .nav button {
+      pointer-events: auto;
+      background: rgba(0, 0, 0, 0.06);
+      border: none;
+      color: #fff;
+      font-size: 36px;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      margin: auto 12px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 1200px) { :root { --img-height: 560px; --separator-height: 30px; } }
+    @media (max-width: 900px)  { :root { --img-height: 420px; --separator-height: 22px; } }
+    @media (max-width: 700px)  {
+      :root { --img-height: 260px; --separator-height: 12px; }
+      .photo-row { flex-direction: column; align-items: flex-start; }
+      .photo-row img { width: 100%; height: var(--img-height); max-width: 100%; }
+      .photo-row .text { max-width: 100%; margin-top: 12px; }
+      .h2-box { margin-left: 0; width: 100%; padding-left: 16px; padding-right: 16px; }
+      .row-separator { margin-left: 0; width: 100%; }
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 4px solid rgba(0, 0, 0, 0.15);
+      border-top-color: rgba(255,255,255,0.8);
+      animation: spin .9s linear infinite;
+      position: absolute;
+      left: 50%;
+      top: 48%;
+      transform: translate(-50%,-50%);
+      z-index: 1500;
+      display: none;
+    }
+    .spinner.show { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <h1>P.V.C.S Pictures</h1>
+
+  <!-- profile picture: use project-relative path -->
+  <img class="pfp" src="images/pfp.jpg" alt="Profile picture">
+
+  <div class="h2-box">
+    <h2>All images are free to post - save - and download</h2>
+  </div>
+
+  <p class="p3">Please disregard the eight digit numbers in each photo. They are a computor organizing system</p>
+
+  <!-- photos -->
+  <div class="photo-row">
+    <img data-src="images/img1.jpg" alt="Photo 1">
+    <div class="text"><p>ELLIS LANGWORTHY taking nap outside mid class-20241010-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row reverse">
+    <img data-src="images/img2.jpg" alt="Photo 2">
+    <div class="text"><p>AARON JACOB BUSLER -20250314-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row">
+    <img data-src="images/img3.jpg" alt="Photo 3">
+    <div class="text"><p>ZAC EMERSON -20250314-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row reverse">
+    <img data-src="images/img4.jpg" alt="Photo 4">
+    <div class="text"><p>BENJAMIN THOMAS SCOTT -20250508-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row">
+    <img data-src="images/img5.jpg" alt="Photo 5">
+    <div class="text"><p>CHANCE JORDAN definetly not his kid-20250918-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row reverse">
+    <img data-src="images/img6.jpg" alt="Photo 6">
+    <div class="text"><p>DANIEL ALEJANDRO ROJAS -no TimeStamp attached-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row">
+    <img data-src="images/img7.jpg" alt="Photo 7">
+    <div class="text"><p>BRAYDEN PRITLE and DEUCEY -20250320-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row reverse">
+    <img data-src="images/img8.jpg" alt="Photo 8">
+    <div class="text"><p>HOLDEN SHOEMAKER finding his roots-20250920-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row">
+    <img data-src="images/img9.jpg" alt="Photo 9">
+    <div class="text"><p>AIDEN HACKETT and ZACH LEMOTTE -20250509- </p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row reverse">
+    <img data-src="images/img10.jpg" alt="Photo 10">
+    <div class="text"><p>AIDEN HACKETT (he's not humping a tree, well he might be. Im not 100% sure) -20250919-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row">
+    <img data-src="images/img11.jpg" alt="Photo 11">
+    <div class="text"><p>WYATT QUINLAN (half court shot that makes it) -20250920-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row reverse">
+    <img data-src="images/img12.jpg" alt="Photo 12">
+    <div class="text"><p>HUDSON LUKE CARNEY will be missed -20250314-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row">
+    <img data-src="images/img13.jpg" alt="Photo 13">
+    <div class="text"><p>CHAD TERRELL blushing for the camera -20250515-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <div class="photo-row reverse">
+    <img data-src="images/img14.jpg" alt="Photo 14">
+    <div class="text"><p>BRAXTON HACKETT -20250312-</p></div>
+  </div>
+  <div class="row-separator" aria-hidden="true"></div>
+
+  <p class="p2">All images are free to download and post. The user who sent this to you doesnt even go to our school and is not me so dont nag him/her. You are free to say you got these images from someone else but I made sure theres no tracablility to me... I do go to P.V.C.S so I'm not some random person finding these images. If you want to ask for more images ask the account that sends this to you and they will let me know. I may not respond for a couple hours-days after you send a message since to get a message through two different people is complicated. Your welcome for the images, </p>
+  <p class="p2">From, ROKO</p>
+
+  <div class="spinner" id="spinner" aria-hidden="true"></div>
+
+  <!-- lightbox -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true">
+    <button class="close" id="lbClose" aria-label="Close">✕</button>
+    <div class="nav">
+      <button id="prev" aria-label="Previous">‹</button>
+      <button id="next" aria-label="Next">›</button>
+    </div>
+    <img id="lbImage" src="" alt="">
+    <div class="meta" id="lbMeta"></div>
+  </div>
+
+  <script>
+    (function(){
+      const imgs = Array.from(document.querySelectorAll('.photo-row img'));
+      const spinner = document.getElementById('spinner');
+      const lightbox = document.getElementById('lightbox');
+      const lbImage = document.getElementById('lbImage');
+      const lbMeta = document.getElementById('lbMeta');
+      const lbClose = document.getElementById('lbClose');
+      const prevBtn = document.getElementById('prev');
+      const nextBtn = document.getElementById('next');
+      let currentIndex = 0;
+
+      // preload images and replace data-src -> src, add loading class while loading
+      function preloadAll() {
+        spinner.classList.add('show');
+        const loads = imgs.map((el) => {
+          return new Promise(resolve => {
+            const src = el.getAttribute('data-src');
+            if (!src) return resolve();
+            el.classList.add('loading');
+            const img = new Image();
+            img.onload = () => {
+              el.src = src;
+              el.removeAttribute('data-src');
+              el.classList.remove('loading');
+              resolve();
+            };
+            img.onerror = () => {
+              el.classList.remove('loading');
+              el.style.opacity = '.35';
+              resolve();
+            };
+            img.src = src;
+          });
+        });
+        return Promise.all(loads).then(() => spinner.classList.remove('show'));
+      }
+
+      // open lightbox
+      function openLightbox(idx) {
+        currentIndex = idx;
+        const el = imgs[currentIndex];
+        lbImage.src = el.src || el.getAttribute('data-src') || '';
+        lbMeta.textContent = el.alt || '';
+        lightbox.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeLightbox() {
+        lightbox.classList.remove('show');
+        lbImage.src = '';
+        document.body.style.overflow = '';
+      }
+      function showPrev() { openLightbox((currentIndex - 1 + imgs.length) % imgs.length); }
+      function showNext() { openLightbox((currentIndex + 1) % imgs.length); }
+
+      // add click handlers
+      imgs.forEach((img, i) => {
+        img.addEventListener('click', () => openLightbox(i));
+      });
+
+      // lightbox controls
+      lbClose.addEventListener('click', closeLightbox);
+      lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+      document.addEventListener('keydown', e => {
+        if (!lightbox.classList.contains('show')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') showPrev();
+        if (e.key === 'ArrowRight') showNext();
+      });
+      prevBtn.addEventListener('click', showPrev);
+      nextBtn.addEventListener('click', showNext);
+
+      // ensure preload runs even if DOMContentLoaded already fired
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', preloadAll);
+      } else {
+        preloadAll();
+      }
+    })();
+  </script>
+</body>
+</html>
